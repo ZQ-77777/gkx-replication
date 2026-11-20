@@ -43,6 +43,7 @@ The remaining results are in [`results/`](results/):
 | `tables/vi_chars.csv` | Variable importance of each characteristic |
 | `tables/tab_portfolios.tex` | Decile long–short portfolios (optional section) |
 | `tables/coverage.csv` | Test years covered by each model |
+| `tables/r2_decomposition.csv` | R² split into timing and stock-picking parts, rank IC (`metrics.r2_decomposition`) |
 | `figures/` | Plots of the R², complexity and variable-importance results |
 
 ## Report
@@ -143,6 +144,11 @@ Two optional checks are in the notebook (flags default to `False`):
     `RUN_TREE_VI_MEDIAN` (§4b) removes this artefact.
   * For the neural networks, the macro importance partly reflects input scale: the macro predictors enter the
     interaction terms in raw units, and the networks are trained with an L1 penalty.
+
+* **Timing vs. stock picking.** `metrics.r2_decomposition` splits each model's pooled R² exactly into a time-series
+  ("timing") part and a cross-sectional ("stock picking") part. The timing part is about 0.15% for almost every model and
+  mostly rewards predicting a positive average return: a constant forecast of 0.5% per month scores R² = 0.13%. Models
+  differ mainly in stock picking, where NN1, NN5, NN2 and PCR lead.
 
 ## Use of AI tools
 

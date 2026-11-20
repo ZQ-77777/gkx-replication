@@ -35,10 +35,12 @@ validation window, 30 out-of-sample years 1987--2016), we estimate 14 specificat
 loss, elastic net, PCR, PLS, random forest, gradient-boosted trees and neural networks NN1--NN5. Regularised, reduced-rank
 and nonlinear models all predict out of sample (monthly $R^2_{oos}$ of 0.07--0.34\%), with the best result from the
 shallow network NN1 (0.34\%, GKX: 0.33\%), whereas OLS with all 920 inputs fails badly ($-23.5\%$ with Huber loss,
-GKX: $-3.46\%$). Two findings go beyond a numerical replication. First, the way macroeconomic information enters matters:
-tree models that see macro predictors as standalone levels forecast the market-wide return component and lose out of sample.
-Second, the dominant predictors are price trends, liquidity and volatility, in line with GKX, while statistical separation
-between the better models is weaker than in the paper.
+GKX: $-3.46\%$). Two findings go beyond a numerical replication. First, an exact split of $R^2_{oos}$ into a
+market-timing and a stock-picking part shows that about 0.15\% of almost every model's $R^2_{oos}$ rewards predicting a
+positive average return -- a constant forecast of 0.5\% per month scores 0.13\% -- so models differ mainly in stock
+picking, where the networks and PCR lead. Second, the way macroeconomic information enters matters: trees that see macro
+predictors as standalone levels try to time the market and lose out of sample. Statistical separation between the better
+models is weaker than in GKX.
 \end{abstract}
 
 % =====================================================================
@@ -53,7 +55,7 @@ best. We replicate their main analysis and organise the report around five quest
 \textbf{Q2} Why does OLS with many predictors fail, and how much do robust loss, regularisation and dimension reduction help?
 \textbf{Q3} What do nonlinear models (trees, networks) add, and how should macroeconomic information enter them?
 \textbf{Q4} Which predictors drive the forecasts, and do models agree?
-\textbf{Q5} How stable are the results over time, and are they economically meaningful?
+\textbf{Q5} Does predictability come from market timing or stock picking, and is it stable and economically meaningful?
 
 % =====================================================================
 \section{Data}
@@ -208,7 +210,8 @@ had used the macro levels to forecast the common, market-wide component of retur
 10.6\% in 2003 alone); keeping only the cross-sectional part of the same forecasts gives $+0.15\%$ and $+0.14\%$. In GKX,
 macro predictors enter only through interactions with centred characteristics, so they cannot shift all forecasts together.
 Removing the standalone levels -- our final specification -- restores positive $R^2_{oos}$ (RF 0.08\%, GBRT+H 0.11\%) and
-reduces the time-series dispersion of the average forecast to the level of the cross-sectional one. The trees remain below
+substantially reduces the time-series dispersion of the average forecast, bringing it close to the cross-sectional level
+(ratio 0.97 for RF and 1.52 for GBRT+H). The trees remain below
 GKX (0.33\%, 0.34\%), because they now see no macro information at all; an independent implementation that feeds the trees
 all 920 interaction terms gives 0.24\% and 0.19\%. The lesson is that a flexible model given macro levels can learn
 market timing, a much harder problem than ranking stocks, and that GKX's interaction design is not innocuous.
@@ -268,9 +271,11 @@ Right: share of importance by group -- price trend (mom1m, mom6m, mom12m, mom36m
 fundamentals (bm, ep, sp, cfp, dy, agr, roaq, roeq, sgr, lev).}\label{fig:vi}
 \end{figure}
 
-Averaged over the 14 models, the most important characteristics are short-term reversal \texttt{mom1m} (20.8\% of total
-importance), 12-month momentum \texttt{mom12m} (11.3\%), size \texttt{mvel1} (9.3\%), turnover \texttt{turn} (4.5\%), momentum
-change \texttt{chmom} (4.4\%), volatility \texttt{retvol} (3.9\%), \texttt{std\_turn} (3.2\%) and \texttt{maxret} (2.9\%). This
+Averaged over the 12 models other than OLS and OLS+H, whose importance is distorted by near-collinearity (Q2), the most
+important characteristics are short-term reversal \texttt{mom1m} (23.7\% of total importance), 12-month momentum
+\texttt{mom12m} (13.1\%), size \texttt{mvel1} (10.5\%), momentum change \texttt{chmom} (5.0\%), turnover \texttt{turn} (5.0\%),
+volatility \texttt{retvol} (4.4\%), \texttt{std\_turn} (3.6\%) and \texttt{maxret} (3.4\%); the binary \texttt{divi} (4.8\%)
+is inflated by the tree artefact discussed below. This
 is essentially GKX's list (Figures~4--5): all methods agree on a small set of price-trend, liquidity and volatility signals,
 while valuation ratios and accounting fundamentals receive about 5\% of importance or less outside OLS-3 (Figure~\ref{fig:vi}).
 Models differ in how concentrated they are: PCR puts 85\% on price trends and PLS/ENet+H 37\% on \texttt{mom1m} alone,
@@ -281,21 +286,50 @@ discussed in Q2.
 Two measurement caveats matter for interpretation. (i) For the trees, binary indicators (\texttt{divi}, \texttt{divo},
 \texttt{sin}, \texttt{convind}) rank high (the ``other'' column). After rank-normalisation their ``0'' group lies slightly
 below zero while missing values are exactly zero, so trees can split on data availability, and setting such an input to zero
-marks every stock as missing; this overstates their importance, and replacing zero by the monthly median (provided as an
-option in our code) removes the artefact. (ii) Among macro predictors, PLS and ENet+H rely mainly on the T-bill rate,
+marks every stock as missing; this overstates their importance. Replacing zero by the monthly median (option
+\texttt{fill="median"} in our code; not used for the reported numbers) should reduce the artefact, so we read tree VI
+descriptively. (ii) Among macro predictors, PLS and ENet+H rely mainly on the T-bill rate,
 default spread and aggregate book-to-market ratio, whereas the networks use almost exclusively the dividend-- and
 earnings--price ratios. Because macro predictors enter the interactions in raw units (\texttt{dp}, \texttt{ep} $\approx-3$;
 T-bill rate $\approx0.05$; stock variance $\approx0.002$) and the networks are trained with an L1 penalty, this partly
 reflects input scale rather than economic relevance. Trees have no macro importance by construction.
 
-\subsection{Q5: Stability and economic value}
-Predictability is far from uniform over time (Figure~\ref{fig:r2}b). All models lose in 2007--2008 (networks
-$-2.1\%$ to $-2.6\%$ in 2007) and recover strongly in 2009 (NN3 $+2.3\%$). The nonlinear models are positive in 17--21 of 30 years. Statistical significance and economic value also differ:
+\subsection{Q5: Timing, stock picking, stability and economic value}
+\begin{table}[t]\centering\scriptsize\setlength{\tabcolsep}{3.2pt}
+\caption{Timing versus stock picking: $R^2_{oos}$ (\%) split exactly into a time-series (timing) and a cross-sectional
+(picking) part. Rank IC: mean monthly Spearman correlation between forecasts and returns ($\times100$), with its
+$t$-statistic. OLS (not shown) is similar to OLS+H.}\label{tab:decomp}
+\begin{tabular}{lrrrrrrrrrrrr}
+\toprule
+ & OLS+H & OLS-3+H & PLS & PCR & ENet+H & RF & GBRT+H & NN1 & NN2 & NN3 & NN4 & NN5\\
+\midrule
+$R^2_{oos}$ & $-23.48$ & 0.19 & 0.20 & 0.28 & 0.07 & 0.08 & 0.11 & 0.34 & 0.31 & 0.21 & 0.19 & 0.28\\
+\quad Timing & 0.15 & 0.15 & 0.15 & 0.15 & 0.15 & 0.05 & 0.10 & 0.16 & 0.18 & 0.15 & 0.19 & 0.12\\
+\quad Picking & $-23.63$ & 0.04 & 0.05 & 0.13 & $-0.08$ & 0.03 & 0.01 & 0.18 & 0.13 & 0.06 & 0.00 & 0.16\\
+Rank IC & $-0.6$ & 3.5 & 2.9 & 5.0 & 3.3 & 1.9 & 2.6 & 5.0 & 5.1 & 4.5 & 2.9 & 4.1\\
+\quad $t$-stat & $-0.8$ & 6.5 & 5.8 & 11.4 & 4.8 & 4.7 & 6.2 & 12.7 & 14.3 & 10.8 & 6.3 & 11.8\\
+\bottomrule
+\end{tabular}
+\end{table}
+\paragraph{Timing versus stock picking.} The zero benchmark mixes two skills. With $\bar r_t$ and $\bar{\hat r}_t$ the
+cross-sectional means of returns and forecasts in month $t$, $R^2_{oos}$ splits exactly into a timing part,
+$\sum_t N_t[\bar r_t^2-(\bar r_t-\bar{\hat r}_t)^2]/\sum r^2$, and a stock-picking part,
+$\sum_{i,t}[(r_{i,t}-\bar r_t)^2-(r_{i,t}-\bar r_t-\hat r_{i,t}+\bar{\hat r}_t)^2]/\sum r^2$ (Table~\ref{tab:decomp}).
+The timing part is about 0.15\% for almost every model and mostly rewards forecasting a positive average return: a
+constant forecast of 0.5\% for every stock and month scores $R^2_{oos}=0.13\%$, more than ENet+H, RF or GBRT+H. Models
+therefore differ mainly in stock picking, where NN1, NN5, NN2 and PCR lead (0.13--0.18\%), and NN1 and NN2 rank stocks
+better than chance in about 80\% of months. OLS fails entirely in the cross-section: its forecasts differ by about 7\% per
+month across stocks, yet their rank correlation with returns is zero. NN3 ranks well (rank IC 4.5) but its forecasts are
+too dispersed, which lowers its picking $R^2$ but not its portfolios, which use only the ranks.
+
+\paragraph{Stability and economic value.} Predictability is far from uniform over time (Figure~\ref{fig:r2}b). All models
+lose in 2007--2008 (networks $-2.1\%$ to $-2.6\%$ in 2007) and recover strongly in 2009 (NN3 $+2.3\%$). In 2008 the loss is
+a timing loss: the timing part is $-1.4$ to $-1.8$ points for OLS-3+H, PCR, RF, NN1 and NN3, while their picking part stays
+positive except for NN3. Long--short portfolios cancel the market component and bet only on the ranking:
 sorting stocks each month into deciles on the forecast, the long--short portfolio of NN3 earns 2.68\% per month
 equal-weighted (annualised Sharpe ratio 1.81) and 1.56\% value-weighted (Sharpe 0.94), compared with 0.81 and 0.42 for
 OLS-3+H and 1.59 and 0.68 for PLS. GKX report a value-weighted Sharpe ratio of 1.35 for their network strategy; our lower
-figure is consistent with our smaller $R^2$ among large stocks. A monthly $R^2$ of a few tenths of a percent, applied to
-thousands of stocks every month, is economically meaningful.
+figure is consistent with our smaller $R^2$ among large stocks.
 
 % =====================================================================
 \section{Discussion and limitations}
@@ -304,18 +338,30 @@ network results; this likely explains part of the weaker DM separation. (ii) \em
 fewer stocks per month than the original sample, and differences in characteristic construction may shift results.
 (iii) \emph{Trees.} Our final trees see no macro information; the 920-input variant shows that adding it through
 interactions helps (0.24\%/0.19\%), but it is a separate implementation and is reported only as a robustness check.
-(iv) \emph{OLS.} We could not run the full OLS models in double precision on a GPU within the project; a diagnostic option
-is included in our code. (v) \emph{Variable importance} is a property of the fitted model, correlated characteristics share
-credit, and the zeroing convention has the caveats above. (vi) The test period is one historical path; single-year results
-are noisy.
+(iv) \emph{OLS.} We did not rerun OLS in double precision; a diagnostic option is in our code. (v) \emph{Variable
+importance} is model-specific and correlated characteristics share credit; the test period is one historical path.
 
 \section{Conclusion}
-We reproduce GKX's central conclusions with public data: OLS with hundreds of predictors overfits catastrophically;
-shrinkage and dimension reduction recover modest predictability that is low-dimensional; shallow neural networks give the
-best forecasts, and depth beyond one or two hidden layers does not help; and all methods agree that short-term reversal,
-momentum, size, liquidity and volatility drive expected returns. Beyond the paper, we find that the way macroeconomic
-information enters a flexible model is decisive -- as standalone levels it invites market timing and out-of-sample losses --
-and that, with our data and compute, most differences among the better models are not statistically significant.
+\begin{table}[h]\centering\footnotesize
+\caption{Replication scorecard.}\label{tab:score}
+\begin{tabular}{p{3.4cm}p{6.4cm}p{2.6cm}}
+\toprule
+GKX finding & Our evidence & Verdict\\
+\midrule
+ML beats linear models & NN1 0.34\% vs.\ OLS-3+H 0.19\%; DM not significant & Replicated in direction\\
+Shallow networks suffice & NN1 best; no pair of networks differs significantly & Replicated\\
+Trees rival networks & Positive but smaller: 0.08/0.11\% vs.\ 0.33/0.34\% (920-input variant 0.24/0.19\%) & Partly; gap explained\\
+A few price signals dominate & Reversal, momentum, size, liquidity lead in all models & Replicated\\
+Unregularised OLS fails & $-23.5\%$ vs.\ $-3.46\%$ & Replicated, stronger\\
+\bottomrule
+\end{tabular}
+\end{table}
+Table~\ref{tab:score} summarises the replication: with public data, three of GKX's five central findings replicate fully,
+one in direction and one in part, and both quantitative gaps -- smaller tree $R^2$ and weaker statistical separation -- are
+traced to our input design and smaller ensembles. Beyond the paper, we find that half or more of a typical
+$R^2_{oos}$ comes from predicting a positive average return, so the machine's real edge is ranking stocks -- exactly what a
+long--short portfolio exploits -- and that macroeconomic information must enter through interactions, or flexible models
+try to time the market.
 
 % =====================================================================
 \section*{Contributions}
@@ -333,7 +379,8 @@ stability analysis, video recording and editing.
 \small
 The code framework (data processing, streamed linear estimators, tree and network wrappers, recursive evaluation, metrics),
 the diagnostic analyses and the drafting and editing of this report were done with the help of Claude (Anthropic). Tang
-Yunshu used an LLM coding assistant to review the variable-importance code, draft analysis scripts and edit her section.
+Yunshu used an AI assistant to set up and monitor her runs, check their completeness, aggregate the variable-importance
+files, generate tables and figures, and draft her section.
 Du Yunhe used WorkBuddy to set up the environment, launch and monitor the estimation, check outputs and draft his section.
 Wei Fanjing used Codex to review the results of the model-complexity analyses and to edit her report section. All code was run and checked by the team; every number in this
 report is computed from the team's own forecasts with the code in the repository, and interpretations were checked against

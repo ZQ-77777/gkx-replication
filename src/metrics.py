@@ -104,6 +104,32 @@ def r2_by_year(out_dir, models=None) -> pd.DataFrame:
     return pd.DataFrame(res)
 
 
+def r2_decomposition(out_dir, models=None) -> pd.DataFrame:
+    """Exact split of the pooled R2_oos (zero benchmark) into a time-series ("timing") part and a
+    cross-sectional ("stock picking") part, plus the mean monthly rank IC.
+    With rbar_t, pbar_t the cross-sectional means of returns and forecasts in month t:
+      timing  = sum_t N_t [rbar_t^2 - (rbar_t - pbar_t)^2]                         / sum r^2
+      picking = sum_it [(r - rbar_t)^2 - ((r - rbar_t) - (p - pbar_t))^2]          / sum r^2
+    and timing + picking = R2_oos. Rank IC = mean over months of the Spearman correlation between
+    forecasts and returns (months with constant forecasts are skipped)."""
+    models = models or available_models(out_dir)
+    rows = {}
+    for m in models:
+        d = load_preds(out_dir, m)[["date", "y", "pred"]].copy()
+        g = d.groupby("date")
+        rb, pb = g.y.transform("mean"), g.pred.transform("mean")
+        sst = np.sum(d.y ** 2)
+        timing = np.sum(rb ** 2 - (rb - pb) ** 2) / sst
+        picking = np.sum((d.y - rb) ** 2 - ((d.y - rb) - (d.pred - pb)) ** 2) / sst
+        d["ry"], d["rp"] = g.y.rank(), g.pred.rank()
+        ic = d.groupby("date")[["ry", "rp"]].apply(
+            lambda x: np.nan if x.rp.nunique() < 2 else np.corrcoef(x.ry, x.rp)[0, 1])
+        rows[m] = {"R2": 100 * r2_oos(d.y, d.pred), "timing": 100 * timing, "picking": 100 * picking,
+                   "rank IC": ic.mean(), "IC t-stat": ic.mean() / ic.std() * np.sqrt(ic.count()),
+                   "IC > 0 (%)": 100 * (ic > 0).sum() / ic.count()}
+    return pd.DataFrame(rows).T
+
+
 def newey_west_se(x: np.ndarray, lags: int = 6) -> float:
     x = x - x.mean()
     T = len(x)
