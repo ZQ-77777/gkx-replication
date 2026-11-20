@@ -1,0 +1,9 @@
+numpy
+pandas>=2.0
+pyarrow            # use pyarrow<=17 if your numpy is < 2.0
+openpyxl
+matplotlib
+jinja2
+torch>=2.1         # neural networks (and GPU path of the linear models)
+xgboost>=2.0       # tree models
+jupyterlab

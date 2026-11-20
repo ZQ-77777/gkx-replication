@@ -1,0 +1,15 @@
+,test years,missing,VI files
+OLS,30,-,6
+OLS+H,30,-,6
+OLS-3,30,-,6
+OLS-3+H,30,-,6
+PLS,30,-,6
+PCR,30,-,6
+ENet+H,30,-,6
+RF,30,-,6
+GBRT+H,30,-,6
+NN1,30,-,6
+NN2,30,-,6
+NN3,30,-,6
+NN4,30,-,6
+NN5,30,-,6

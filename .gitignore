@@ -1,0 +1,12 @@
+# data and model outputs are large and are not version-controlled
+data/
+outputs/
+outputs_*/
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
